@@ -1,13 +1,15 @@
 //
 // Created by Chris Hartman on 3/5/21.
 //
+// Modified by Yali Wang on 4/23/21.
 
 #include "Shape.hpp"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
-using std::numbers::pi;
 #include <numeric>
+
+const double pi = 3.14159265358979323846264;
 
 Circle::Circle(double radius) : _radius(radius) {
 }
@@ -156,92 +158,94 @@ std::string RotatedShape::getPostScript() const {
    return output;
 }
 
-LayeredShape::LayeredShape(std::initializer_list<ShapePtr> shapes) : _shapes(shapes) {
-}
 
-double LayeredShape::getHeight() const {
-   double maxHeight = 0.0;
-   for (const auto &shape : _shapes)
-      maxHeight = std::max(maxHeight, shape->getHeight());
-   return maxHeight;
-   // in C++20 we can return std::ranges::max_element(_shapes,{},Shape::getHeight());
-}
-
-double LayeredShape::getWidth() const {
-   double maxWidth = 0.0;
-   for (const auto &shape : _shapes)
-      maxWidth = std::max(maxWidth, shape->getHeight());
-   return maxWidth;
-}
-
-std::string LayeredShape::getPostScript() const {
-   //   std::string output{};
-   //   for (const auto &shape : _shapes)
-   //      output += shape->getPostScript();
-   //   return output;
-   return std::accumulate(_shapes.begin(), _shapes.end(), std::string{},
-                          [](auto output, auto sPtr) { return output + sPtr->getPostScript(); });
-}
-
-VerticalShape::VerticalShape(std::initializer_list<ShapePtr> shapes) : _shapes(shapes) {
-}
-
-double VerticalShape::getHeight() const {
-   double sumOfHeights = 0.0;
-   for (const auto &shape : _shapes)
-      sumOfHeights += shape->getHeight();
-   return sumOfHeights;
-   // in C++20 we couldazszza return std::ranges::accumulate(_shapes,0,Shape::getHeight());
-}
-
-double VerticalShape::getWidth() const {
-   double maxWidth = 0.0;
-   for (const auto &shape : _shapes)
-      maxWidth = std::max(maxWidth, shape->getHeight());
-   return maxWidth;
-}
-
-std::string VerticalShape::getPostScript() const {
+std::string CompoundShapes::getPostScript() const {
    std::string output{"gsave\n"};
-   output += "0 " + std::to_string(-getHeight() / 2) + " rmoveto\n";
-   for (const auto &shape : _shapes) {
-      output += "0 " + std::to_string(shape->getHeight() / 2) + " rmoveto\n";
+
+   output += moveToPositionForShape();
+   for (const auto &shape : getShapes()) {
+      output += moveHalfwayForShape(shape);
       output += shape->getPostScript();
-      output += "0 " + std::to_string(shape->getHeight() / 2) + " rmoveto\n";
+      output += moveHalfwayForShape(shape);
+      output += "\n";
    }
+
    output += "grestore\n";
 
    return output;
 }
 
-HorizontalShape::HorizontalShape(std::initializer_list<ShapePtr> shapes) : _shapes(shapes) {
-}
-
-double HorizontalShape::getHeight() const {
-   double maxHeight = 0.0;
-   for (const auto &shape : _shapes)
-      maxHeight = std::max(maxHeight, shape->getHeight());
-   return maxHeight;
-   // in C++20 we can return std::ranges::max_element(_shapes,{},Shape::getHeight());
-}
-
-double HorizontalShape::getWidth() const {
-   double sumOfWidths = 0.0;
-   for (const auto &shape : _shapes)
-      sumOfWidths += shape->getWidth();
-   return sumOfWidths;
-}
-
-std::string HorizontalShape::getPostScript() const {
-   std::string output{"gsave\n"};
-   output += std::to_string(-getWidth() / 2) + " 0 rmoveto\n";
-   for (const auto &shape : _shapes) {
-      output += std::to_string(shape->getWidth() / 2) + " 0 rmoveto\n";
-      output += shape->getPostScript();
-      output += std::to_string(shape->getWidth() / 2) + " 0 rmoveto\n";
+LayeredShape::LayeredShape(std::initializer_list<std::shared_ptr<Shape>> list) : CompoundShapes(list) {
+   double width = 0;
+   double height = 0;
+   for (auto const &shape : list) {
+      if (shape->getHeight() > height)
+         height = shape->getHeight();
+      if (shape->getWidth() > width)
+         width = shape->getWidth();
    }
-   output += "grestore\n";
-   return output;
+   _width = width;
+   _height = height;
+}
+
+std::string LayeredShape::moveToPositionForShape() const {
+   return std::string{};
+}
+
+std::string LayeredShape::moveHalfwayForShape(const std::shared_ptr<Shape> &shape) const {
+   return std::string{};
+}
+
+std::shared_ptr<LayeredShape> Layered(std::initializer_list<std::shared_ptr<Shape>> list) {
+   return std::make_shared<LayeredShape>(list);
+}
+
+VerticalShape::VerticalShape(std::initializer_list<std::shared_ptr<Shape>> list) : CompoundShapes(list){
+   double width = 0;
+   double height = 0;
+   for (auto const &shape : list) {
+      height += shape->getHeight();
+      if (shape->getWidth() > width)
+         width = shape->getWidth();
+   }
+   _width = width;
+   _height = height;
+}
+
+std::string VerticalShape::moveToPositionForShape() const {
+   return "0 " + std::to_string(- getHeight() / 2) + " rmoveto\n";
+}
+
+std::string VerticalShape::moveHalfwayForShape(const std::shared_ptr<Shape> &shape) const {
+   return "0 " + std::to_string(shape-> getHeight() / 2) + " rmoveto\n";
+}
+
+std::shared_ptr<VerticalShape> Vertical(std::initializer_list<std::shared_ptr<Shape>> list) {
+   return std::make_shared<VerticalShape>(list);
+}
+
+HorizontalShape::HorizontalShape(std::initializer_list<std::shared_ptr<Shape>> list) : CompoundShapes(list){
+   double width = 0;
+   double height = 0;
+   for (auto const &shape : list) {
+      width += shape->getWidth();
+      if (shape->getHeight() > height)
+         height = shape->getHeight();
+   }
+   _width = width;
+   _height = height;
+}
+
+std::string HorizontalShape::moveToPositionForShape() const {
+   return std::to_string(- getWidth() / 2) + " 0 rmoveto\n";
+}
+
+std::string HorizontalShape::moveHalfwayForShape(const std::shared_ptr<Shape> &shape) const {
+   return std::to_string(shape-> getWidth() / 2) + " 0 rmoveto\n";
+}
+
+std::shared_ptr<HorizontalShape> Horizontal(std::initializer_list<std::shared_ptr<Shape>> list) {
+   return std::make_shared<HorizontalShape>(list);
 }
 
 ShapePtr makeCircle(double radius) {
