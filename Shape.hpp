@@ -1,6 +1,7 @@
 //
 // Created by Chris Hartman on 3/5/21.
 //
+// Modified by Yali Wang on 4/23/21.
 
 #ifndef CS372CPS_SHAPE_HPP
 #define CS372CPS_SHAPE_HPP
@@ -102,34 +103,82 @@ private:
    Rot _rotation;
 };
 
-class LayeredShape : public Shape {
-public:
-   LayeredShape(std::initializer_list<ShapePtr> shapes);
-   [[nodiscard]] double getHeight() const override;
-   [[nodiscard]] double getWidth() const override;
-   [[nodiscard]] std::string getPostScript() const override;
+// Add CompoundShapes Class
+class CompoundShapes : public Shape {
+
 private:
-   std::vector<ShapePtr> _shapes;
+   std::vector<std::shared_ptr<Shape>> _shapeList;
+   double _width = 0;
+   double _height = 0;
+
+protected:
+   [[nodiscard]] std::vector<std::shared_ptr<Shape>> getShapes() const {
+      return _shapeList;
+   }
+   [[nodiscard]] virtual std::string moveToPositionForShape() const = 0;
+   [[nodiscard]] virtual std::string moveHalfwayForShape(const std::shared_ptr<Shape> &shape) const = 0;
+
+public:
+   CompoundShapes(std::initializer_list<std::shared_ptr<Shape>> list) : _shapeList(list) {
+   }
+   virtual ~CompoundShapes() = default;
+
+   [[nodiscard]] std::string getPostScript() const override;
 };
 
-class VerticalShape : public Shape {
-public:
-   VerticalShape(std::initializer_list<ShapePtr> shapes);
-   [[nodiscard]] double getHeight() const override;
-   [[nodiscard]] double getWidth() const override;
-   [[nodiscard]] std::string getPostScript() const override;
+
+class LayeredShape : public CompoundShapes {
 private:
-   std::vector<ShapePtr> _shapes;
+   double _width;
+   double _height;
+
+   [[nodiscard]] std::string moveToPositionForShape() const override;
+   [[nodiscard]] std::string moveHalfwayForShape(const std::shared_ptr<Shape> &shape) const override;
+
+public:
+   [[nodiscard]] double getWidth() const override {
+      return _width;
+   }
+   [[nodiscard]] double getHeight() const override {
+      return _height;
+   }
+   LayeredShape(std::initializer_list<std::shared_ptr<Shape>> list);
 };
 
-class HorizontalShape : public Shape {
-public:
-   HorizontalShape(std::initializer_list<ShapePtr> shapes);
-   [[nodiscard]] double getHeight() const override;
-   [[nodiscard]] double getWidth() const override;
-   [[nodiscard]] std::string getPostScript() const override;
+class VerticalShape : public CompoundShapes {
 private:
-   std::vector<ShapePtr> _shapes;
+   double _width;
+   double _height;
+
+   [[nodiscard]] std::string moveToPositionForShape() const override;
+   [[nodiscard]] std::string moveHalfwayForShape(const std::shared_ptr<Shape> &shape) const override;
+
+public:
+   [[nodiscard]] double getWidth() const override {
+      return _width;
+   }
+   [[nodiscard]] double getHeight() const override {
+      return _height;
+   }
+   VerticalShape(std::initializer_list<std::shared_ptr<Shape>> list);
+};
+
+class HorizontalShape : public CompoundShapes {
+private:
+   double _width;
+   double _height;
+
+   [[nodiscard]] std::string moveToPositionForShape() const override;
+   [[nodiscard]] std::string moveHalfwayForShape(const std::shared_ptr<Shape> &shape) const override;
+
+public:
+   [[nodiscard]] double getWidth() const override {
+      return _width;
+   }
+   [[nodiscard]] double getHeight() const override {
+      return _height;
+   }
+   HorizontalShape(std::initializer_list<std::shared_ptr<Shape>> list);
 };
 
 ShapePtr makeCircle(double radius);
